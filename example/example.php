@@ -17,11 +17,13 @@ function microtime_float()
     return ((float)$usec + (float)$sec);
 }
 
-const REDIS_HOST = 'localhost';
+const REDIS_HOST = '127.0.0.1';
 const REDIS_PORT = 6379;
+const REDIS_AUTH = 'secret888';
 
 $redis = new \Redis();
 $redis->connect(REDIS_HOST, REDIS_PORT);
+$redis->auth(REDIS_AUTH);
 $redis->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_PHP);
 $redis->select(0);
 
@@ -33,12 +35,12 @@ while (($data = fgetcsv($handle) ) !== false) {
 $time_start = microtime_float();
 
 $filters = [
-    'Redis-BloomFilter-Murmur' => (new BloomFilter(BitRedis::create(), new Murmur()))->setSize(1000),
-    'Redis-BloomFilter-Crc32b' => (new BloomFilter(BitRedis::create(), new Crc32b()))->setSize(1000),
-    'Redis-DynamicBloomFilter-Murmur' => (new DynamicBloomFilter(BitRedis::create(), new Murmur()))->setSize(200),
-    'Redis-DynamicBloomFilter-Crc32b' => (new DynamicBloomFilter(BitRedis::create(), new Crc32b()))->setSize(200),
-    'Redis-CountingFilter-Murmur' => (new CountingBloomFilter(BitRedis::create(), CountRedis::create(), new Murmur()))->setSize(1000),
-    'Redis-CountingFilter-Crc32b' => (new CountingBloomFilter(BitRedis::create(), CountRedis::create(), new Crc32b()))->setSize(1000),
+    'Redis-BloomFilter-Murmur' => (new BloomFilter(BitRedis::create(['auth' => REDIS_AUTH]), new Murmur()))->setSize(1000),
+    'Redis-BloomFilter-Crc32b' => (new BloomFilter(BitRedis::create(['auth' => REDIS_AUTH]), new Crc32b()))->setSize(1000),
+    'Redis-DynamicBloomFilter-Murmur' => (new DynamicBloomFilter(BitRedis::create(['auth' => REDIS_AUTH]), new Murmur()))->setSize(200),
+    'Redis-DynamicBloomFilter-Crc32b' => (new DynamicBloomFilter(BitRedis::create(['auth' => REDIS_AUTH]), new Crc32b()))->setSize(200),
+    'Redis-CountingFilter-Murmur' => (new CountingBloomFilter(BitRedis::create(['auth' => REDIS_AUTH]), CountRedis::create(['auth' => REDIS_AUTH]), new Murmur()))->setSize(1000),
+    'Redis-CountingFilter-Crc32b' => (new CountingBloomFilter(BitRedis::create(['auth' => REDIS_AUTH]), CountRedis::create(['auth' => REDIS_AUTH]), new Crc32b()))->setSize(1000),
     'BitString-BloomFilter-Murmur' => (new BloomFilter(new BitString(), new Murmur()))->setSize(1000),
     'BitString-BloomFilter-Crc32b' => (new BloomFilter(new BitString(), new Crc32b()))->setSize(1000),
     'BitString-DynamicBloomFilter-Murmur' => (new DynamicBloomFilter(new BitString, new Murmur()))->setSize(200),

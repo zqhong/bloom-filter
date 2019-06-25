@@ -30,8 +30,13 @@ class CountRedis implements CountPersister
         $port = isset($params['port']) ? $params['port'] :self::DEFAULT_PORT;
         $db = isset($params['db']) ? $params['db'] : self::DEFAULT_DB;
         $key = isset($params['key']) ? $params['key'] : self::DEFAULT_KEY;
+        $auth = isset($params['auth']) ? $params['auth'] : "";
 
         $redis->connect($host, $port);
+        if(!empty($auth)) {
+            $redis->auth($auth);
+        }
+
         $redis->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_PHP);
         $redis->select($db);
 
