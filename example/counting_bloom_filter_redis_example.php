@@ -18,7 +18,7 @@ $redis->del(REDIS_KEY);
 $redis->del(REDIS_COUNT_KEY);
 $handle = fopen(__DIR__ . "/data.csv", "r");
 
-while (($data = fgetcsv($handle) ) !== false) {
+while (($data = fgetcsv($handle, escape: '') ) !== false) {
     $messages[] = $data[0];
 }
 

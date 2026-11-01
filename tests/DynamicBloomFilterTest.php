@@ -2,6 +2,7 @@
 
 namespace RocketLabs\BloomFilter\Test\Hash;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RocketLabs\BloomFilter\DynamicBloomFilter;
 use RocketLabs\BloomFilter\Hash\Hash;
@@ -9,85 +10,95 @@ use RocketLabs\BloomFilter\Persist\BitPersister;
 
 class DynamicBloomFilterTest extends TestCase
 {
-
-    /**
-     * @test
-     */
-    public function addToDynamicFilter()
+    #[Test]
+    public function addToDynamicFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
-        $hash->expects($this->any())
-            ->method('generate')
-            ->willReturn(2);
+        $persister = $this->createMock(BitPersister::class);
+        $hash = $this->createStub(Hash::class);
+        $hash->method('generate')->willReturn('2');
 
-        $persister->expects($this->at(0))
-            ->method('setBulk')
-            ->willReturn(1)
-            ->with([2, 2, 2]); //calculated bits for hashes
+        $setBulkCalls = [];
 
-        $persister->expects($this->at(3))
+        $persister->expects($this->exactly(10))
             ->method('setBulk')
-            ->willReturn(1)
-            ->with([16, 16, 16]); //calculated bits for hashes
-        $persister->expects($this->at(6))
-            ->method('setBulk')
-            ->willReturn(1)
-            ->with([30, 30, 30]); //calculated bits for hashes
-        $persister->expects($this->at(9))
-            ->method('setBulk')
-            ->willReturn(1)
-            ->with([44, 44, 44]); //calculated bits for hashes
+            ->willReturnCallback(function (array $bits) use (&$setBulkCalls): int {
+                $setBulkCalls[] = $bits;
+
+                return 1;
+            });
 
         $filter = new DynamicBloomFilter($persister, $hash);
         $filter->setSize(3)->setFalsePositiveProbability(0.1);
-        for($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $filter->add('testString');
         }
+
+        static::assertSame(
+            [
+                [2, 2, 2],
+                [2, 2, 2],
+                [16, 16, 16],
+                [16, 16, 16],
+                [16, 16, 16],
+                [30, 30, 30],
+                [30, 30, 30],
+                [30, 30, 30],
+                [44, 44, 44],
+                [44, 44, 44],
+            ],
+            $setBulkCalls
+        );
     }
 
-    /**
-     * @test
-     */
-    public function existsInFilter()
+    #[Test]
+    public function existsInFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
-        $hash->expects($this->any())
-            ->method('generate')
-            ->willReturn(2);
+        $persister = $this->createMock(BitPersister::class);
+        $hash = $this->createStub(Hash::class);
+        $hash->method('generate')->willReturn('2');
 
         $filter = new DynamicBloomFilter($persister, $hash);
         $filter->setSize(3)->setFalsePositiveProbability(0.1);
-        for($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $filter->add('testString');
         }
 
-        $persister->expects($this->at(0))->method('getBulk')->willReturn([1, 0, 1])->with([2, 2 , 2]);
-        $persister->expects($this->at(1))->method('getBulk')->willReturn([1, 1, 1])->with([16, 16 , 16]);
+        $getBulkCalls = [];
+
+        $persister->expects($this->exactly(2))
+            ->method('getBulk')
+            ->willReturnCallback(function (array $bits) use (&$getBulkCalls): array {
+                $getBulkCalls[] = $bits;
+
+                return count($getBulkCalls) === 1 ? [1, 0, 1] : [1, 1, 1];
+            });
 
         static::assertTrue($filter->has('testString'));
+        static::assertSame([[2, 2, 2], [16, 16, 16]], $getBulkCalls);
     }
 
-    /**
-     * @test
-     */
-    public function suspendRestoreFilter()
+    #[Test]
+    public function suspendRestoreFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
-        $hash->expects($this->any())
-            ->method('generate')
-            ->willReturn(2);
+        $persister = $this->createMock(BitPersister::class);
+        $hash = $this->createStub(Hash::class);
+        $hash->method('generate')->willReturn('2');
 
         $filter = new DynamicBloomFilter($persister, $hash);
         $filter->setSize(3)->setFalsePositiveProbability(0.1);
-        for($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $filter->add('testString');
         }
 
-        $persister->expects($this->at(0))->method('getBulk')->willReturn([1, 0, 1])->with([2, 2 , 2]);
-        $persister->expects($this->at(1))->method('getBulk')->willReturn([1, 1, 1])->with([16, 16 , 16]);
+        $getBulkCalls = [];
+
+        $persister->expects($this->exactly(2))
+            ->method('getBulk')
+            ->willReturnCallback(function (array $bits) use (&$getBulkCalls): array {
+                $getBulkCalls[] = $bits;
+
+                return count($getBulkCalls) === 1 ? [1, 0, 1] : [1, 1, 1];
+            });
 
         $memento = $filter->saveState();
 
@@ -95,30 +106,43 @@ class DynamicBloomFilterTest extends TestCase
         $restoredFilter->restoreState($memento);
 
         static::assertTrue($restoredFilter->has('testString'));
+        static::assertSame([[2, 2, 2], [16, 16, 16]], $getBulkCalls);
     }
 
-    /**
-     * @test
-     */
-    public function doesNotExistsInFilter()
+    #[Test]
+    public function doesNotExistsInFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
-        $hash->expects($this->any())
-            ->method('generate')
-            ->willReturn(2);
+        $persister = $this->createMock(BitPersister::class);
+        $hash = $this->createStub(Hash::class);
+        $hash->method('generate')->willReturn('2');
 
         $filter = new DynamicBloomFilter($persister, $hash);
         $filter->setSize(3)->setFalsePositiveProbability(0.1);
-        for($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $filter->add('testString');
         }
 
-        $persister->expects($this->at(0))->method('getBulk')->willReturn([1, 0, 1])->with([2, 2 , 2]);
-        $persister->expects($this->at(1))->method('getBulk')->willReturn([1, 1, 0])->with([16, 16, 16]);
-        $persister->expects($this->at(2))->method('getBulk')->willReturn([1, 1, 0])->with([30, 30, 30]);
-        $persister->expects($this->at(3))->method('getBulk')->willReturn([1, 1, 0])->with([44, 44, 44]);
+        $getBulkCalls = [];
+
+        $persister->expects($this->exactly(4))
+            ->method('getBulk')
+            ->willReturnCallback(function (array $bits) use (&$getBulkCalls): array {
+                $getBulkCalls[] = $bits;
+
+                $results = [
+                    [1, 0, 1],
+                    [1, 1, 0],
+                    [1, 1, 0],
+                    [1, 1, 0],
+                ];
+
+                return $results[count($getBulkCalls) - 1];
+            });
 
         static::assertFalse($filter->has('testString'));
+        static::assertSame(
+            [[2, 2, 2], [16, 16, 16], [30, 30, 30], [44, 44, 44]],
+            $getBulkCalls
+        );
     }
 }

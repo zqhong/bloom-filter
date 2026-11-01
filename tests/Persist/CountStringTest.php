@@ -2,32 +2,27 @@
 
 namespace RocketLabs\BloomFilter\Test\Persist;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RocketLabs\BloomFilter\Persist\CountString15;
 
 class CountStringTest extends TestCase
 {
-    /**
-     * @test
-     */
-    public function createWithDefaultSize()
+    #[Test]
+    public function createWithDefaultSize(): void
     {
         $persister = new CountString15();
 
         $class = new \ReflectionClass(CountString15::class);
         $propertyBytes = $class->getProperty("bytes");
         $propertySize = $class->getProperty("size");
-        $propertyBytes->setAccessible(true);
-        $propertySize->setAccessible(true);
 
         static::assertEquals(CountString15::DEFAULT_BYTE_SIZE, $propertySize->getValue($persister));
         static::assertEquals(CountString15::DEFAULT_BYTE_SIZE, strlen($propertyBytes->getValue($persister)));
     }
 
-    /**
-     * @test
-     */
-    public function incrementBit()
+    #[Test]
+    public function incrementBit(): void
     {
         $persister = new CountString15();
         static::assertEquals(1, $persister->incrementBit(0));
@@ -38,10 +33,8 @@ class CountStringTest extends TestCase
         static::assertEquals(2, $persister->incrementBit(2048));
     }
 
-    /**
-     * @test
-     */
-    public function getBit()
+    #[Test]
+    public function getBit(): void
     {
         $persister = new CountString15();
         for ($i = 0; $i < 7; $i++) {
@@ -57,22 +50,19 @@ class CountStringTest extends TestCase
         static::assertEquals(0, $persister->get(10002));
     }
 
-    /**
-     * @test
-     * @expectedException  \RuntimeException
-     */
-    public function incrementOverflow()
+    #[Test]
+    public function incrementOverflow(): void
     {
+        $this->expectException(\RuntimeException::class);
+
         $persister = new CountString15();
         for ($i = 0; $i < 16; $i++) {
             $persister->incrementBit(42);
         }
     }
 
-    /**
-     * @test
-     */
-    public function reset()
+    #[Test]
+    public function reset(): void
     {
         $persister = new CountString15();
         $persister->incrementBit(42);

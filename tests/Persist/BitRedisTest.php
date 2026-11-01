@@ -2,48 +2,49 @@
 
 namespace RocketLabs\BloomFilter\Test\Persist;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RocketLabs\BloomFilter\Persist\BitRedis;
 
 class BitRedisTest extends TestCase
 {
-
-    /**
-     * @test
-     */
-    public function setBit()
+    protected function setUp(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        if (!extension_loaded('redis')) {
+            $this->markTestSkipped('The redis extension is not available.');
+        }
+    }
+
+    #[Test]
+    public function setBit(): void
+    {
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('setBit')
             ->willReturn(1)
-            ->with(BitRedis::DEFAULT_KEY, 100, 1);
+            ->with(BitRedis::DEFAULT_KEY, 100, true);
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->set(100);
     }
 
-    /**
-     * @test
-     */
-    public function unsetBit()
+    #[Test]
+    public function unsetBit(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('setBit')
             ->willReturn(1)
-            ->with(BitRedis::DEFAULT_KEY, 100, 0);
+            ->with(BitRedis::DEFAULT_KEY, 100, false);
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->unset(100);
     }
 
-    /**
-     * @test
-     */
-    public function getBit()
+    #[Test]
+    public function getBit(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('getBit')
             ->willReturn(0)
@@ -53,25 +54,23 @@ class BitRedisTest extends TestCase
         static::assertEquals(0, $persister->get(100));
     }
 
-    /**
-     * @test
-     * @expectedException \LogicException
-     */
-    public function setNegativeBit()
+    #[Test]
+    public function setNegativeBit(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $this->expectException(\LogicException::class);
+
+        $redisMock = $this->createStub(\Redis::class);
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->set(-1);
     }
 
-    /**
-     * @test
-     * @expectedException \LogicException
-     */
-    public function getNegativeBit()
+    #[Test]
+    public function getNegativeBit(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $this->expectException(\LogicException::class);
+
+        $redisMock = $this->createStub(\Redis::class);
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->set(-1);
@@ -79,111 +78,123 @@ class BitRedisTest extends TestCase
 
     }
 
-    /**
-     * @test
-     * @expectedException \TypeError
-     */
-    public function getWrongBitValue()
+    #[Test]
+    public function getWrongBitValue(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $this->expectException(\TypeError::class);
+
+        $redisMock = $this->createStub(\Redis::class);
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->set('test');
     }
 
-
-    /**
-     * @test
-     */
-    public function setBits()
+    #[Test]
+    public function setBits(): void
     {
         $bits = [2, 16, 250];
-        $pipeMock = $this->getMockBuilder(\Redis::class)->getMock();
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $pipeMock = $this->createMock(\Redis::class);
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('pipeline')
             ->willReturn($pipeMock);
 
+        $setBitCalls = [];
+
         $pipeMock->expects($this->exactly(count($bits)))
             ->method('setBit')
-            ->withConsecutive(
-                [BitRedis::DEFAULT_KEY, $bits[0], 1],
-                [BitRedis::DEFAULT_KEY, $bits[1], 1],
-                [BitRedis::DEFAULT_KEY, $bits[2], 1]
-            )
-            ->willReturn(1);
+            ->willReturnCallback(function (...$arguments) use (&$setBitCalls): int {
+                $setBitCalls[] = $arguments;
+
+                return 1;
+            });
 
         $pipeMock->expects($this->once())
             ->method('exec')
-            ->willReturn(1);
+            ->willReturn([]);
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->setBulk($bits);
+
+        static::assertSame(
+            [
+                [BitRedis::DEFAULT_KEY, $bits[0], true],
+                [BitRedis::DEFAULT_KEY, $bits[1], true],
+                [BitRedis::DEFAULT_KEY, $bits[2], true],
+            ],
+            $setBitCalls
+        );
     }
 
-    /**
-     * @test
-     */
-    public function unsetBits()
+    #[Test]
+    public function unsetBits(): void
     {
         $bits = [2, 16, 250];
-        $pipeMock = $this->getMockBuilder(\Redis::class)->getMock();
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $pipeMock = $this->createMock(\Redis::class);
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('pipeline')
             ->willReturn($pipeMock);
 
+        $setBitCalls = [];
+
         $pipeMock->expects($this->exactly(count($bits)))
             ->method('setBit')
-            ->withConsecutive(
-                [BitRedis::DEFAULT_KEY, $bits[0], 0],
-                [BitRedis::DEFAULT_KEY, $bits[1], 0],
-                [BitRedis::DEFAULT_KEY, $bits[2], 0]
-            )
-            ->willReturn(1);
+            ->willReturnCallback(function (...$arguments) use (&$setBitCalls): int {
+                $setBitCalls[] = $arguments;
+
+                return 1;
+            });
 
         $pipeMock->expects($this->once())
             ->method('exec')
-            ->willReturn(1);
+            ->willReturn([]);
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->unsetBulk($bits);
+
+        static::assertSame(
+            [
+                [BitRedis::DEFAULT_KEY, $bits[0], false],
+                [BitRedis::DEFAULT_KEY, $bits[1], false],
+                [BitRedis::DEFAULT_KEY, $bits[2], false],
+            ],
+            $setBitCalls
+        );
     }
 
-    /**
-     * @test
-     */
-    public function reset()
+    #[Test]
+    public function reset(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
-            ->method('del');
+            ->method('del')
+            ->with(BitRedis::DEFAULT_KEY);
 
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->reset();
     }
 
-    /**
-     * @test
-     */
-    public function getBits()
+    #[Test]
+    public function getBits(): void
     {
         $bits = [2, 16, 250];
-        $pipeMock = $this->getMockBuilder(\Redis::class)->getMock();
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $pipeMock = $this->createMock(\Redis::class);
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('pipeline')
             ->willReturn($pipeMock);
 
+        $getBitCalls = [];
+
         $pipeMock->expects($this->exactly(count($bits)))
             ->method('getBit')
-            ->withConsecutive(
-                [BitRedis::DEFAULT_KEY, $bits[0]],
-                [BitRedis::DEFAULT_KEY, $bits[1]],
-                [BitRedis::DEFAULT_KEY, $bits[2]]
-            )
-            ->willReturn([1,1,1]);
+            ->willReturnCallback(function (...$arguments) use (&$getBitCalls): int {
+                $getBitCalls[] = $arguments;
+
+                return 1;
+            });
 
         $pipeMock->expects($this->once())
             ->method('exec')
@@ -191,5 +202,14 @@ class BitRedisTest extends TestCase
         /** @var \Redis $redisMock */
         $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
         $persister->getBulk($bits);
+
+        static::assertSame(
+            [
+                [BitRedis::DEFAULT_KEY, $bits[0]],
+                [BitRedis::DEFAULT_KEY, $bits[1]],
+                [BitRedis::DEFAULT_KEY, $bits[2]],
+            ],
+            $getBitCalls
+        );
     }
 }
