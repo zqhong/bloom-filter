@@ -145,8 +145,8 @@ class CountString15 implements CountPersister
      */
     private function offsetToByte(int $offset): int
     {
-         $this->assertOffset($offset);
-         $byte = $offset / 2;
+        $this->assertOffset($offset);
+        $byte = intdiv($offset, 2);
 
         if ($this->size <= $byte) {
             $this->bytes .= str_repeat(chr(0), $byte - $this->size + self::DEFAULT_BYTE_SIZE);

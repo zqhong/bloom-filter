@@ -16,7 +16,7 @@ $redis->select(0);
 $redis->del('dynamic_bloom_filter');
 $handle = fopen(__DIR__ . "/data.csv", "r");
 
-while (($data = fgetcsv($handle) ) !== false) {
+while (($data = fgetcsv($handle, escape: '') ) !== false) {
     $messages[] = $data[0];
 }
 

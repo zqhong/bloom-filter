@@ -2,32 +2,27 @@
 
 namespace RocketLabs\BloomFilter\Test\Persist;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RocketLabs\BloomFilter\Persist\BitString;
 
 class BitStringTest extends TestCase
 {
-    /**
-     * @test
-     */
-    public function createWithDefaultSize()
+    #[Test]
+    public function createWithDefaultSize(): void
     {
         $persister = new BitString();
 
         $class = new \ReflectionClass(BitString::class);
         $propertyBytes = $class->getProperty("bytes");
         $propertySize = $class->getProperty("size");
-        $propertyBytes->setAccessible(true);
-        $propertySize->setAccessible(true);
 
         static::assertEquals(BitString::DEFAULT_BYTE_SIZE, $propertySize->getValue($persister));
         static::assertEquals(BitString::DEFAULT_BYTE_SIZE, strlen($propertyBytes->getValue($persister)));
     }
 
-    /**
-     * @test
-     */
-    public function setBit()
+    #[Test]
+    public function setBit(): void
     {
         $persister = new BitString();
         $persister->set(100);
@@ -46,10 +41,8 @@ class BitStringTest extends TestCase
 
     }
 
-    /**
-     * @test
-     */
-    public function unsetBit()
+    #[Test]
+    public function unsetBit(): void
     {
         $persister = new BitString();
         $persister->set(100);
@@ -60,10 +53,8 @@ class BitStringTest extends TestCase
         static::assertEquals(0, $persister->get(100));
     }
 
-    /**
-     * @test
-     */
-    public function bitIsNotSet()
+    #[Test]
+    public function bitIsNotSet(): void
     {
         $persister = new BitString();
         $allNotSetBitsAreOff = true;
@@ -75,30 +66,26 @@ class BitStringTest extends TestCase
         static::assertTrue($allNotSetBitsAreOff);
     }
 
-    /**
-     * @test
-     * @expectedException \LogicException
-     */
-    public function setNegativeBit()
+    #[Test]
+    public function setNegativeBit(): void
     {
+        $this->expectException(\LogicException::class);
+
         $persister = new BitString();
         $persister->set(-1);
     }
 
-    /**
-     * @test
-     * @expectedException \TypeError
-     */
-    public function getWrongBitValue()
+    #[Test]
+    public function getWrongBitValue(): void
     {
+        $this->expectException(\TypeError::class);
+
         $persister = new BitString();
         $persister->set('test');
     }
 
-    /**
-     * @test
-     */
-    public function setBits()
+    #[Test]
+    public function setBits(): void
     {
         $bits = [2, 16, 250, 1024];
         $persister = new BitString();
@@ -109,10 +96,8 @@ class BitStringTest extends TestCase
         }
     }
 
-    /**
-     * @test
-     */
-    public function unsetBits()
+    #[Test]
+    public function unsetBits(): void
     {
         $bits = [2, 16, 250, 1024];
         $persister = new BitString();
@@ -124,10 +109,8 @@ class BitStringTest extends TestCase
         }
     }
 
-    /**
-     * @test
-     */
-    public function reset()
+    #[Test]
+    public function reset(): void
     {
         $bits = [2, 16, 250, 1024];
         $persister = new BitString();
@@ -139,10 +122,8 @@ class BitStringTest extends TestCase
         }
     }
 
-    /**
-     * @test
-     */
-    public function getBits()
+    #[Test]
+    public function getBits(): void
     {
         $bits = [2, 16, 250, 1024];
         $persister = new BitString();
@@ -151,18 +132,14 @@ class BitStringTest extends TestCase
         static::assertEquals([1, 1, 1, 1, 0], $persister->getBulk(array_merge($bits, [512])));
     }
 
-    /**
-     * @test
-     */
-    public function increaseSize()
+    #[Test]
+    public function increaseSize(): void
     {
         $persister = new BitString();
 
         $class = new \ReflectionClass(BitString::class);
         $propertyBytes = $class->getProperty("bytes");
         $propertySize = $class->getProperty("size");
-        $propertyBytes->setAccessible(true);
-        $propertySize->setAccessible(true);
 
         $bit = BitString::DEFAULT_BYTE_SIZE * 8 * 3 + 2;
         $increasedSize =  BitString::DEFAULT_BYTE_SIZE * 3 + BitString::DEFAULT_BYTE_SIZE;

@@ -2,17 +2,23 @@
 
 namespace RocketLabs\BloomFilter\Test\Persist;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RocketLabs\BloomFilter\Persist\CountRedis;
 
 class CountRedisTest extends TestCase
 {
-    /**
-     * @test
-     */
-    public function incrementBit()
+    protected function setUp(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        if (!extension_loaded('redis')) {
+            $this->markTestSkipped('The redis extension is not available.');
+        }
+    }
+
+    #[Test]
+    public function incrementBit(): void
+    {
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('hIncrBy')
             ->willReturn(1)
@@ -22,12 +28,10 @@ class CountRedisTest extends TestCase
         self::assertEquals(1, $persister->incrementBit(100));
     }
 
-    /**
-     * @test
-     */
-    public function decrementBit()
+    #[Test]
+    public function decrementBit(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('hIncrBy')
             ->willReturn(0)
@@ -37,12 +41,10 @@ class CountRedisTest extends TestCase
         self::assertEquals(0, $persister->decrementBit(100));
     }
 
-    /**
-     * @test
-     */
-    public function getBit()
+    #[Test]
+    public function getBit(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('hGet')
             ->willReturn(10)
@@ -52,14 +54,12 @@ class CountRedisTest extends TestCase
         self::assertEquals(10, $persister->get(100));
     }
 
-
-    /**
-     * @test
-     * @expectedException  \RuntimeException
-     */
-    public function negativeDecrement()
+    #[Test]
+    public function negativeDecrement(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $this->expectException(\RuntimeException::class);
+
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('hIncrBy')
             ->willReturn(-1)
@@ -70,21 +70,19 @@ class CountRedisTest extends TestCase
             ->with(CountRedis::DEFAULT_KEY, 100, 0);
         /** @var \Redis $redisMock */
         $persister = new CountRedis($redisMock, CountRedis::DEFAULT_KEY);
-        self::assertEquals(0, $persister->decrementBit(100));
+        $persister->decrementBit(100);
     }
 
-    /**
-     * @test
-     */
-    public function reset()
+    #[Test]
+    public function reset(): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
+        $redisMock = $this->createMock(\Redis::class);
         $redisMock->expects($this->once())
             ->method('del')
             ->willReturn(1)
             ->with(CountRedis::DEFAULT_KEY);
         /** @var \Redis $redisMock */
         $persister = new CountRedis($redisMock, CountRedis::DEFAULT_KEY);
-        $persister->reset(100);
+        $persister->reset();
     }
 }

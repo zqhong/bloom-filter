@@ -2,15 +2,14 @@
 
 namespace RocketLabs\BloomFilter\Test\Hash;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RocketLabs\BloomFilter\Hash\Crc32b;
 
 class Crc32bTest extends TestCase
 {
-    /**
-     * @test
-     */
-    public function hash()
+    #[Test]
+    public function hash(): void
     {
         $hash = new Crc32b();
         $value = 'test value';

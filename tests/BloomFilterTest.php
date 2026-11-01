@@ -2,36 +2,27 @@
 
 namespace RocketLabs\BloomFilter\Test\Hash;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RocketLabs\BloomFilter\BloomFilter;
 use RocketLabs\BloomFilter\Hash\Hash;
 use RocketLabs\BloomFilter\Hash\Murmur;
 use RocketLabs\BloomFilter\Persist\BitPersister;
-use RocketLabs\BloomFilter\Persist\BitRedis;
+use RocketLabs\BloomFilter\Persist\BitString;
 
 class BloomFilterTest extends TestCase
 {
-
-    /**
-     * @param int $size
-     * @param float $probability
-     * @param int $expectedHashSize
-     * @param int $expectedBitSize
-     *
-     * @test
-     * @dataProvider createBloomFilterDataProvider
-     */
-    public function createBloomFilter($size, $probability, $expectedHashSize, $expectedBitSize)
+    #[Test]
+    #[DataProvider('createBloomFilterDataProvider')]
+    public function createBloomFilter($size, $probability, $expectedHashSize, $expectedBitSize): void
     {
-        $redisMock = $this->getMockBuilder(\Redis::class)->getMock();
-        $persister = new BitRedis($redisMock, BitRedis::DEFAULT_KEY);
+        $persister = new BitString();
         $hash = new Murmur();
 
         $class = new \ReflectionClass(BloomFilter::class);
         $propertyHashes = $class->getProperty('hashCount');
         $propertyBitSize = $class->getProperty('bitSize');
-        $propertyHashes->setAccessible(true);
-        $propertyBitSize->setAccessible(true);
         $filter = new BloomFilter($persister, $hash);
         $filter->setSize($size)->setFalsePositiveProbability($probability);
 
@@ -42,46 +33,44 @@ class BloomFilterTest extends TestCase
     /**
      * @return array
      */
-    public function createBloomFilterDataProvider()
+    public static function createBloomFilterDataProvider(): array
     {
         return [
             'Size: 100, probability: 99.9%' => [
-                '$size' => 100,
-                '$probability' => 0.001,
-                '$expectedHashSize' => 10,
-                '$expectedBitSize' => 1438
+                'size' => 100,
+                'probability' => 0.001,
+                'expectedHashSize' => 10,
+                'expectedBitSize' => 1438
             ],
             'Size: 1000, probability: 99%' => [
-                '$size' => 1000,
-                '$probability' => 0.01,
-                '$expectedHashSize' => 7,
-                '$expectedBitSize' => 9585
+                'size' => 1000,
+                'probability' => 0.01,
+                'expectedHashSize' => 7,
+                'expectedBitSize' => 9585
             ],
             'Size: 1000, probability: 99,99%' => [
-                '$size' => 1000,
-                '$probability' => 0.0001,
-                '$expectedHashSize' => 13,
-                '$expectedBitSize' => 19170
+                'size' => 1000,
+                'probability' => 0.0001,
+                'expectedHashSize' => 13,
+                'expectedBitSize' => 19170
             ],
             'Size: 1000000, probability: 99,99%' => [
-                '$size' => 1000000,
-                '$probability' => 0.0001,
-                '$expectedHashSize' => 13,
-                '$expectedBitSize' => 19170117 //2.3Mb
+                'size' => 1000000,
+                'probability' => 0.0001,
+                'expectedHashSize' => 13,
+                'expectedBitSize' => 19170117 //2.3Mb
             ]
         ];
     }
 
-    /**
- * @test
- */
-    public function addToFilter()
+    #[Test]
+    public function addToFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
+        $persister = $this->createMock(BitPersister::class);
+        $hash = $this->createMock(Hash::class);
         $hash->expects($this->exactly(3))
             ->method('generate')
-            ->will($this->onConsecutiveCalls(42, 1000, 10048));
+            ->willReturnOnConsecutiveCalls('42', '1000', '10048');
 
         $persister->expects($this->once())
             ->method('setBulk')
@@ -93,36 +82,31 @@ class BloomFilterTest extends TestCase
         $filter->add('testString');
     }
 
-    /**
-     * @test
-     * @expectedException \LogicException
-     */
-    public function filterHasNotBeenInitialized()
+    #[Test]
+    public function filterHasNotBeenInitialized(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
+        $this->expectException(\LogicException::class);
+
+        $persister = $this->createMock(BitPersister::class);
+        $hash = $this->createMock(Hash::class);
         $hash->expects($this->never())
             ->method('generate');
 
-
         $persister->expects($this->never())
             ->method('setBulk');
-
 
         $filter = new BloomFilter($persister, $hash);
         $filter->add('testString');
     }
 
-    /**
-     * @test
-     */
-    public function addBulkFilter()
+    #[Test]
+    public function addBulkFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
+        $persister = $this->createMock(BitPersister::class);
+        $hash = $this->createMock(Hash::class);
         $hash->expects($this->exactly(9))
             ->method('generate')
-            ->will( $this->onConsecutiveCalls(42, 43, 44, 1, 2, 3, 10001, 10002, 10003));
+            ->willReturnOnConsecutiveCalls('42', '43', '44', '1', '2', '3', '10001', '10002', '10003');
 
         $persister->expects($this->once())
             ->method('setBulk')
@@ -139,17 +123,14 @@ class BloomFilterTest extends TestCase
         );
     }
 
-    /**
-     * @test
-     */
-    public function existsInFilter()
+    #[Test]
+    public function existsInFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
+        $persister = $this->createMock(BitPersister::class);
 
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
-        $hash->expects($this->any())
-            ->method('generate')
-            ->will( $this->onConsecutiveCalls(42, 1000, 10001, 42, 1000, 10001));
+        $hash = $this->createStub(Hash::class);
+        $hash->method('generate')
+            ->willReturnOnConsecutiveCalls('42', '1000', '10001', '42', '1000', '10001');
 
         $persister->expects($this->once())
             ->method('setBulk')
@@ -169,17 +150,14 @@ class BloomFilterTest extends TestCase
         static::assertTrue($filterForGet->has('testString'));
     }
 
-    /**
-     * @test
-     */
-    public function suspendRestoreFilter()
+    #[Test]
+    public function suspendRestoreFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
+        $persister = $this->createMock(BitPersister::class);
 
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
-        $hash->expects($this->any())
-            ->method('generate')
-            ->will( $this->onConsecutiveCalls(42, 1000, 10001, 42, 1000, 10001));
+        $hash = $this->createStub(Hash::class);
+        $hash->method('generate')
+            ->willReturnOnConsecutiveCalls('42', '1000', '10001', '42', '1000', '10001');
 
         $persister->expects($this->once())
             ->method('setBulk')
@@ -200,12 +178,10 @@ class BloomFilterTest extends TestCase
         static::assertTrue($filterForGet->has('testString'));
     }
 
-    /**
-     * @test
-     */
-    public function DoesNotExistInFilter()
+    #[Test]
+    public function DoesNotExistInFilter(): void
     {
-        $persister = $this->getMockBuilder(BitPersister::class)->getMock();
+        $persister = $this->createMock(BitPersister::class);
         $persister->expects($this->once())
             ->method('setBulk')
             ->willReturn(1)
@@ -215,10 +191,10 @@ class BloomFilterTest extends TestCase
             ->willReturn([1, 0, 1])
             ->with([43, 1001, 233]); //calculated bits for hashes
 
-        $hash = $this->getMockBuilder(Hash::class)->getMock();
+        $hash = $this->createMock(Hash::class);
         $hash->expects($this->exactly(6))
             ->method('generate')
-            ->will( $this->onConsecutiveCalls(42, 1000, 10048, 43, 1001, 10049));
+            ->willReturnOnConsecutiveCalls('42', '1000', '10048', '43', '1001', '10049');
 
         $filterForSet = new BloomFilter($persister, $hash);
         $filterForSet->setSize(1024)->setFalsePositiveProbability(0.1);
